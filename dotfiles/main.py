@@ -2,19 +2,18 @@
 import logging
 
 from .cmdline import parse_command_line
-from .config import get_source_dir
-from .context import Context
+from .config import get_dotfiles_dir
 from .status import status
 from .install import install
-from .error import DotFilesException 
+from .error import DotFilesException
 from .logger import configure_logger
+from .dotfile import find_dotfiles
 
 def all():
     args = parse_command_line()
     configure_logger(args.verbose)
-    source_dir = get_source_dir(args)
-    context = Context(source_dir, no_action=args.no_action)
-    dotfiles = context.find_dotfiles()
+    dotfiles_dir = get_dotfiles_dir(args)
+    dotfiles = find_dotfiles(dotfiles_dir)
 
     if args.action == 'status':
         for dotfile in dotfiles:

@@ -1,4 +1,5 @@
 from logging import getLogger
+import shutil
 
 from .dotfile import Status
 
@@ -9,13 +10,8 @@ def install(dotfile):
 
     if dotfile.status == Status.ok:
         logger.debug('{} is already installed'.
-            format(dotfile.installed))
+            format(dotfile.actual))
         return
 
-    elif dotfile.status == Status.dont_exist:
-        dotfile.symlink()
-
-    elif dotfile.status in (Status.not_symlink, Status.wrong_symlink):
-        if not dotfile.backup():
-            return
-        dotfile.symlink()
+    elif dotfile.status == Status.missing:
+        shutil.copy(str(dotfile.dotfile), str(dotfile.actual))

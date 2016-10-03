@@ -8,9 +8,9 @@ from .error import DotFilesException
 
 logger = getLogger('dotfiles.config')
 
-def get_source_dir(args):
-    if args.source_dir != None:
-        return Path(args.source_dir)
+def get_dotfiles_dir(args):
+    if args.dotfiles_dir != None:
+        return Path(args.dotfiles_dir)
 
     fp = Path.home() / '.config' / 'dotfiles' / 'config.yaml'
 
@@ -18,9 +18,9 @@ def get_source_dir(args):
         logger.debug('Read config file: {}'.format(fp))
         with fp.open() as f:
             data = yaml.load(f)
-        return Path(data['source_dir'])
+        return Path(data['dotfiles_dir'])
     else:
         logger.debug('No config file: {}'.format(fp))
 
-    raise DotFilesException("Can't find source_dir")
+    raise DotFilesException("Can't find dotfiles_dir")
 

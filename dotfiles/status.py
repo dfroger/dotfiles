@@ -4,14 +4,11 @@ from pathlib import Path
 from .dotfile import Status
 
 def status(dotfile):
-    if dotfile.status == Status.dont_exist:
-        print('!', dotfile.installed)
+    if dotfile.status == Status.missing:
+        print('-', dotfile.actual)
 
-    elif dotfile.status == Status.not_symlink:
-        print('?', dotfile.installed)
+    elif dotfile.status == Status.different:
+        print('!', dotfile.actual)
 
-    elif dotfile.status == Status.wrong_symlink:
-        print('B', dotfile.installed)
-
-    elif dotfile.status == Status.to_merge:
-        print('G', dotfile.installed)
+    elif dotfile.status == Status.symlink:
+        print('S', dotfile.actual)

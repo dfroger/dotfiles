@@ -8,62 +8,46 @@ logger = getLogger('dotfiles.dotfile')
 
 class Status(Enum):
     ok = 1
-    dont_exist = 2
-    not_symlink = 3
-    wrong_symlink = 4
-    to_merge = 5
+    missing = 2
+    different = 3
+    symlink = 4
 
 class DotFile:
 
-    def __init__(self, context, source_relative):
-        self.context = context
-        self.source_relative = source_relative
-        self.source = (context.source_dir / source_relative).resolve()
-        self.installed = self._compute_actual()
-        self.installed_backup = Path(str(self.installed) + '.tomerge')
+    def __init__(self, dotfiles_dir, dotfile):
+        self.dotfiles_dir = dotfiles_dir
+        self.dotfile = dotfile
+        self.relative_path = dotfile.relative_to(dotfiles_dir)
+        self.actual = self._compute_actual()
         self.status = self._compute_status()
 
-    def symlink(self):
-        parent = self.installed.parent
-        logger.info('Installing {}'.format(self.installed))
-        if self.context.no_action:
-            return
-        if not parent.is_dir():
-            os.makedirs(str(parent))
-        self.installed.symlink_to(self.source)
-
-    def backup(self):
-        logger.info('Backing up {} in {}'.
-            format(self.installed, self.installed_backup))
-                                                 
-        if self.context.no_action:
-            return True
-
-        try:
-            self.installed.rename(self.installed_backup)
-            return True
-        except OSError as e:
-            logger.warning("Can't rename {} to {}"
-                .format(self.installed, self.installed_backup))
-            return False
-
     def _compute_actual(self):
-        if str(self.source_relative).startswith('_'):
-            self.source_relative = str(self.source_relative).replace('_', '.', 1)
-        return Path.home() / self.source_relative
+        if str(self.relative_path).startswith('_'):
+            self.relative_path = str(self.relative_path).replace('_', '.', 1)
+        return Path.home() / self.relative_path
 
     def _compute_status(self):
-        if not self.installed.exists():
-            return Status.dont_exist
+        if not self.actual.exists():
+            return Status.missing
 
-        if not self.installed.is_symlink():
-            return Status.not_symlink
+        if self.actual.is_symlink():
+            return Status.symlink
 
-        target = os.readlink(str(self.installed))
-        if str(target) != str(self.source):
-            return Status.wrong_symlink
+        with self.dotfile.open() as f:
+            dotfile_content = f.read().strip()
 
-        if self.installed_backup.exists():
-            return Status.to_merge
+        with self.actual.open() as f:
+            actual_content = f.read().strip()
+
+        if dotfile_content != actual_content:
+            return Status.different
 
         return Status.ok
+
+def find_dotfiles(dotfiles_dir):
+    dotfiles = []
+    for dotfile in dotfiles_dir.glob('**/*'):
+        if dotfile.is_dir():
+            continue
+        dotfiles.append(DotFile(dotfiles_dir, dotfile))
+    return dotfiles
