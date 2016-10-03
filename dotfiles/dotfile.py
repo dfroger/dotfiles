@@ -44,10 +44,11 @@ class DotFile:
 
         return Status.ok
 
-def find_dotfiles(dotfiles_dir):
+def find_dotfiles(dotfiles_dirs):
     dotfiles = []
-    for dotfile in dotfiles_dir.glob('**/*'):
-        if dotfile.is_dir():
-            continue
-        dotfiles.append(DotFile(dotfiles_dir, dotfile))
+    for dotfiles_dir in dotfiles_dirs:
+        for dotfile in dotfiles_dir.glob('**/*'):
+            if dotfile.is_dir():
+                continue
+            dotfiles.append(DotFile(dotfiles_dir, dotfile))
     return dotfiles

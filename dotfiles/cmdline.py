@@ -5,8 +5,8 @@ import sys
 def parse_command_line(argv=None):
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--dotfiles_dir', '-d',
-                        help='Path to (versionned) directory of dot files')
+    parser.add_argument('--dotfiles_path', '-p',
+                        help='Colon separated list of directories of dot files')
 
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='Verbose mode')
