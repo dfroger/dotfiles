@@ -20,9 +20,7 @@ def get_dotfiles_path(args):
             data = yaml.load(f)
         return data['dotfiles_path']
     else:
-        logger.debug('No config file: {}'.format(config))
-
-    raise DotFilesException("Can't find dotfiles_dir")
+        raise DotFilesException('Missing config file: {}'.format(config))
 
 
 def get_dotfiles_dirs(args):

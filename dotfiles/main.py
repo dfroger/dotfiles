@@ -23,6 +23,7 @@ def all():
             install(dotfile)
 
 def main():
+    logger = logging.getLogger('dotfiles')
     try:
         all()
     except DotFilesException as e:
