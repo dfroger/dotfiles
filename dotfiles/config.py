@@ -25,4 +25,4 @@ def get_dotfiles_path(args):
 
 def get_dotfiles_dirs(args):
     dotfiles_path = get_dotfiles_path(args)
-    return [Path(p) for p in dotfiles_path.split(':')]
+    return [Path(p) for p in dotfiles_path]

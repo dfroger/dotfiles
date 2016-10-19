@@ -8,7 +8,9 @@ Require Python 3.5 and pyyaml.
 
 File `~/.config/dotfiles/config.yaml`
 
-    dotfiles_path: /path/to/your/versionned/dotfiles
+    dotfiles_path:
+        - /path/to/your/versionned/dotfiles_base
+        - /path/to/your/versionned/dotfiles_for_this_machine
 
 Versionned config files can start with a `_` instead of `.`:
 
