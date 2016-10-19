@@ -1,8 +1,13 @@
-## Install
+## Development
 
-Require Python 3.5 and pyyaml.
+Require Python 3.5 and pyyaml:
 
-    python setup.py install
+    conda create -n dot python=3.5
+    source activate dot
+
+Install in development mode:
+
+    pip install -e .
 
 ## Configuration
 
@@ -19,7 +24,7 @@ Versionned config files can start with a `_` instead of `.`:
 
 ## Usage
 
-    usage: dotfiles [-h] [--source_dir SOURCE_DIR] [--verbose] [--no-action]
+    usage: dot [-h] [--source_dir SOURCE_DIR] [--verbose] [--no-action]
                     {status,install}
 
     positional arguments:

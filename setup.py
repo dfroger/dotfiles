@@ -8,7 +8,7 @@ setup(
     packages = ['dotfiles',],
     entry_points = {
         'console_scripts': [
-            'dotfiles = dotfiles.main:main',
+            'dot = dotfiles.main:main',
         ],
     },
     license = 'GPL V3',
