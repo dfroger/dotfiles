@@ -20,7 +20,7 @@ def all():
 
     elif args.action == 'install':
         for dotfile in dotfiles:
-            install(dotfile)
+            install(dotfile, no_action=args.no_action)
 
 def main():
     logger = logging.getLogger('dotfiles')

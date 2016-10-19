@@ -5,13 +5,23 @@ from .dotfile import Status
 
 logger = getLogger('dotfiles.install')
 
-def install(dotfile):
-    logger.debug('Installing {}'.format(dotfile.source_relative))
+def install(dotfile, no_action):
+    logger.debug('Installing {}'.format(dotfile.relative_path))
+
+    action = not no_action
 
     if dotfile.status == Status.ok:
-        logger.debug('{} is already installed'.
-            format(dotfile.actual))
+        logger.debug('{} is already installed'. format(dotfile.actual))
         return
 
     elif dotfile.status == Status.missing:
-        shutil.copy(str(dotfile.dotfile), str(dotfile.actual))
+        directory = dotfile.actual.parent
+        if not directory.is_dir():
+            print('mkdir -p {}'.format(directory))
+            if action:
+                directory.mkdir(parents=True)
+
+        print('cp {} {}'.format(str(dotfile.dotfile), str(dotfile.actual)))
+        print()
+        if action:
+            shutil.copy(str(dotfile.dotfile), str(dotfile.actual))
