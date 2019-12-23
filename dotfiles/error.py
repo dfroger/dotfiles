@@ -1,2 +1,0 @@
-class DotFilesException(Exception):
-    pass
