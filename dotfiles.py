@@ -153,24 +153,23 @@ def cmd_status(dotfiles: List[DotFile], args):
 
 
 def cmd_install(dotfiles: List[DotFile], args):
-
     action = not args.no_action
 
     for dotfile in dotfiles:
-        logger.debug("Installing {}".format(dotfile.actual_relative))
+        logger.debug(f"Installing {dotfile.actual_relative}")
 
         if dotfile.status == Status.OK:
-            logger.debug("{} is already installed".format(dotfile.actual))
+            logger.debug(f"{dotfile.actual} is already installed")
             return
 
         elif dotfile.status == Status.MISSING:
             directory = dotfile.actual.parent
             if not directory.is_dir():
-                print("mkdir -p {}".format(directory))
+                print(f"mkdir -p {directory}")
                 if action:
                     directory.mkdir(parents=True)
 
-            print("cp {} {}".format(str(dotfile.dotfile), str(dotfile.actual)))
+            print(f"cp {dotfile.dotfile} {dotfile.actual}")
             print()
             if action:
                 shutil.copy(str(dotfile.dotfile), str(dotfile.actual))
