@@ -137,14 +137,17 @@ def cmd_status(dotfiles: List[DotFile], args):
         print()
 
         for dotfile in dotfiles:
-            if dotfile.status == Status.MISSING:
-                line("-", dotfile)
+            if dotfile.status in (Status.OK, Status.SYMLINK):
+                line(" ", dotfile)
+
+            elif dotfile.status == Status.MISSING:
+                line("∅", dotfile)
 
             elif dotfile.status == Status.DIFFERENT:
-                line("!", dotfile)
+                line("≠", dotfile)
 
-            elif dotfile.status == Status.SYMLINK:
-                line("S", dotfile)
+            else:
+                raise ValueError(f"Unexpected status: {dotfile.status}")
 
         print()
 
