@@ -8,37 +8,48 @@ from enum import Enum
 import shutil
 from collections import defaultdict
 from typing import Dict, List
+import subprocess
 
 logger = logging.getLogger()
 
 
 class Status(Enum):
     OK = 1
-    MISSING = 2
+    NOT_INSTALLED = 2
     DIFFERENT = 3
     SYMLINK = 4
+    NOT_BACKED_UP = 5
+
+
+def dotted(p: Path) -> Path:
+    return Path(str(p).replace("_", ".", 1)) if str(p).startswith("_") else p
+
+
+def underscored(p: Path) -> Path:
+    return Path(str(p).replace(".", "_", 1)) if str(p).startswith(".") else p
 
 
 class DotFile:
-    def __init__(self, backup_dir: Path, dotfile: Path):
+    def __init__(self, backup_dir: Path, backup: Path, install_dir: Path):
         self.backup_dir = backup_dir
-        self.dotfile = dotfile
+        self.backup = backup
 
-        self.actual_relative = dotfile.relative_to(backup_dir)
-        if str(self.actual_relative).startswith("_"):
-            self.actual_relative = Path(str(self.actual_relative).replace("_", ".", 1))
+        self.actual_relative = dotted(backup.relative_to(backup_dir))
 
-        self.actual = Path.home() / self.actual_relative
+        self.actual = install_dir / self.actual_relative
         self.status = self._compute_status()
 
     def _compute_status(self):
         if not self.actual.exists():
-            return Status.MISSING
+            return Status.NOT_INSTALLED
+
+        if not self.backup.exists():
+            return Status.NOT_BACKED_UP
 
         if self.actual.is_symlink():
             return Status.SYMLINK
 
-        with self.dotfile.open() as f:
+        with self.backup.open() as f:
             dotfile_content = f.read().strip()
 
         with self.actual.open() as f:
@@ -62,6 +73,9 @@ def parse_command_line(argv=None):
     parser.add_argument(
         "--backup", "-b", nargs="+", type=Path, help="Path to the backup directories",
     )
+    parser.add_argument(
+        "--install-dir", "-i", type=Path, default=Path.home(), help="Path to the installation directory",
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose mode")
     parser.add_argument(
         "--no-action",
@@ -71,13 +85,21 @@ def parse_command_line(argv=None):
     )
     subparsers = parser.add_subparsers()
 
-    parser_install = subparsers.add_parser("install", help="Install the dot files")
-    parser_install.set_defaults(func=cmd_install)
-
     parser_status = subparsers.add_parser(
         "status", help="List statuses of the dot files"
     )
+    parser_status.add_argument(
+        "--hide-ok",
+        action="store_true",
+        help="Do not report dot files with up-to-dated backup",
+    )
     parser_status.set_defaults(func=cmd_status)
+
+    parser_install = subparsers.add_parser("install", help="Install the dot files")
+    parser_install.set_defaults(func=cmd_install)
+
+    parser_backup = subparsers.add_parser("backup", help="Backup the dot files")
+    parser_backup.set_defaults(func=cmd_backup)
 
     args = parser.parse_args(argv)
     return args
@@ -90,16 +112,29 @@ def read_conf(path: Path) -> Dict:
             data = json.load(f)
         return {"backup": [Path(p) for p in data["backup"]]}
     else:
-        raise FileNotFoundError("Missing config file: {path}")
+        raise FileNotFoundError(f"Missing config file: {path}")
 
 
-def find_dotfiles(backup_dirs: List[Path]) -> List[DotFile]:
+def find_dotfiles(backup_dirs: List[Path], install_dir: Path) -> List[DotFile]:
     dotfiles = []
     for backup_dir in backup_dirs:
-        for dotfile in backup_dir.glob("**/*"):
-            if dotfile.is_dir():
+        for backup in backup_dir.glob("**/*"):
+            if backup.is_dir():
                 continue
-            dotfiles.append(DotFile(backup_dir, dotfile))
+            dotfiles.append(DotFile(backup_dir, backup, install_dir))
+
+    # Check is there are files in ~/bin that are not backed up
+    bindir = install_dir / "bin"
+    for p in bindir.iterdir():
+        if p.is_dir():
+            pass
+        r = p.relative_to(bindir)
+        u = underscored(r)
+        for backup_dir in backup_dirs:
+            if (backup_dir / "bin" / u).exists():
+                break
+        else:
+            dotfiles.append(DotFile(backup_dirs[0], backup_dirs[0] / "bin" / u, install_dir))
     return dotfiles
 
 
@@ -115,7 +150,6 @@ def configure_logger(verbose: bool):
     consolehandler.setFormatter(formatter)
     consolehandler.setLevel(level)
 
-    logger = logging.getLogger("dotfiles")
     logger.addHandler(consolehandler)
     logger.setLevel(level)
 
@@ -138,13 +172,17 @@ def cmd_status(dotfiles: List[DotFile], args):
 
         for dotfile in dotfiles:
             if dotfile.status in (Status.OK, Status.SYMLINK):
-                line(" ", dotfile)
+                if not args.hide_ok:
+                    line(" ", dotfile)
 
-            elif dotfile.status == Status.MISSING:
+            elif dotfile.status == Status.NOT_INSTALLED:
                 line("∅", dotfile)
 
             elif dotfile.status == Status.DIFFERENT:
                 line("≠", dotfile)
+
+            elif dotfile.status == Status.NOT_BACKED_UP:
+                line("⚠️", dotfile)
 
             else:
                 raise ValueError(f"Unexpected status: {dotfile.status}")
@@ -160,19 +198,27 @@ def cmd_install(dotfiles: List[DotFile], args):
 
         if dotfile.status == Status.OK:
             logger.debug(f"{dotfile.actual} is already installed")
-            return
+            continue
 
-        elif dotfile.status == Status.MISSING:
+        elif dotfile.status == Status.NOT_INSTALLED:
             directory = dotfile.actual.parent
             if not directory.is_dir():
                 print(f"mkdir -p {directory}")
                 if action:
                     directory.mkdir(parents=True)
 
-            print(f"cp {dotfile.dotfile} {dotfile.actual}")
+            print(f"cp {dotfile.backup} {dotfile.actual}")
             print()
             if action:
-                shutil.copy(str(dotfile.dotfile), str(dotfile.actual))
+                shutil.copy(str(dotfile.backup), str(dotfile.actual))
+
+
+def cmd_backup(dotfiles: List[DotFile], args):
+    for dotfile in dotfiles:
+        if dotfile.status in (Status.DIFFERENT, Status.NOT_BACKED_UP):
+            subprocess.run(
+                ["/usr/local/bin/nvim", "-d", dotfile.actual, dotfile.backup]
+            )
 
 
 def main():
@@ -180,7 +226,7 @@ def main():
     configure_logger(args.verbose)
     conf = read_conf(args.config)
     backup_dirs = conf["backup"] if args.backup is None else args.backup
-    dotfiles = find_dotfiles(backup_dirs)
+    dotfiles = find_dotfiles(backup_dirs, args.install_dir)
 
     args.func(dotfiles, args)
 
